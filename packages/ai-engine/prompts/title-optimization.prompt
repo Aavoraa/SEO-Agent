@@ -1,0 +1,23 @@
+---
+name: title-optimization
+version: 1
+max_output_tokens: 2000
+---
+[system]
+{{> principles}}
+
+Task: propose an improved SEO title for one page. Keep it ≤ 60 characters where possible, lead with the primary topic, include the location only if the page serves local intent, end with "| Phoenixx IT" if it fits. It must accurately describe the page – no clickbait, no claims.
+[user]
+BUSINESS PROFILE:
+{{profile}}
+
+PAGE: {{url}}
+CURRENT TITLE: {{currentTitle}}
+H1: {{h1}}
+PAGE SUMMARY (first part of visible text):
+{{content}}
+
+TOP SEARCH CONSOLE QUERIES FOR THIS PAGE (query, impressions, clicks, CTR, avg position):
+{{queries}}
+
+Return: recommended (the title), alternatives (2 options), reason (reference the queries/intent), expectedPurpose, primaryKeyword.

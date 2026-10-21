@@ -1,0 +1,20 @@
+---
+name: local-seo
+version: 1
+max_output_tokens: 3000
+---
+[system]
+{{> principles}}
+
+Task: review the Service × Location matrix. Recommend local actions only where there is a legitimate business reason AND search evidence. Prefer strengthening existing pages (location sections, NAP, map, local FAQs, Google Business Profile consistency) over creating new location pages. Never suggest pages for locations the business does not serve.
+[user]
+BUSINESS PROFILE:
+{{profile}}
+
+MATRIX (JSON):
+{{matrix}}
+
+NAP / SCHEMA FINDINGS:
+{{findings}}
+
+Return: actions[] {service, location, action (optimize_existing_page|add_location_section|create_location_page|google_business_profile|monitor), targetUrl, rationale, evidence, priority}, napNotes[], summary.

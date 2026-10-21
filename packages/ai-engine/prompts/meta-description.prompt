@@ -1,0 +1,22 @@
+---
+name: meta-description
+version: 1
+max_output_tokens: 1500
+---
+[system]
+{{> principles}}
+
+Task: write a meta description (120–155 characters) that accurately summarises the page, reflects searcher intent, and ends with a soft call to action. No unverifiable claims, no numbers that are not in the input.
+[user]
+BUSINESS PROFILE:
+{{profile}}
+
+PAGE: {{url}}
+TITLE: {{title}}
+CURRENT META DESCRIPTION: {{currentDescription}}
+PAGE SUMMARY:
+{{content}}
+TOP QUERIES:
+{{queries}}
+
+Return: recommended, alternatives (2), reason, expectedPurpose.

@@ -1,0 +1,184 @@
+{
+  "id": "pxSeoCompetitors",
+  "name": "SEO Agent – 09 Monthly Competitor Analysis",
+  "nodes": [
+    {
+      "id": "d560d6a2-85fe-4e56-a661-fa68868b2dce",
+      "parameters": {
+        "content": "## SEO Agent – 09 Monthly Competitor Analysis\nCrawls the competitor URLs configured in the dashboard (robots.txt respected, 1 request/second, structure only – no content copied), then refreshes content gap analysis.\n\nRequires n8n env vars: SEO_API_URL, SEO_API_KEY (service key), SEO_PROJECT_ID. All logic runs in the SEO Agent API; every call is retried 3× and failures trigger the Error Handler workflow.",
+        "width": 520,
+        "height": 260
+      },
+      "name": "Note 3ce33e",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -260
+      ]
+    },
+    {
+      "id": "c75d471a-50fc-447e-ae1c-5d3d5b9aba0e",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 4 1 * *"
+            }
+          ]
+        }
+      },
+      "name": "1st of month 04:00 IST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "ba99a4e4-38dd-4768-a8e9-cef24729be4e",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/jobs/competitor-analyze?wait=true",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=competitors-{{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {
+          "timeout": 3600000
+        }
+      },
+      "name": "Analyze competitors",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000
+    },
+    {
+      "id": "a648e6e7-2246-4b36-a98d-062fc291b503",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/jobs/content-opportunities?wait=true",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=competitors-{{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"useAi\": false }",
+        "options": {
+          "timeout": 1800000
+        }
+      },
+      "name": "Refresh content gaps",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000
+    },
+    {
+      "id": "6eb73eb0-c79e-4cdf-a053-8e8a11990272",
+      "parameters": {
+        "jsCode": "// Summarise job output for the execution log (visible in n8n → Executions).\nconst r = $input.first().json;\nreturn [{ json: { workflow: 'competitors', status: r.status, jobId: r.jobId, correlationId: r.correlationId, output: r.output, finishedAt: new Date().toISOString() } }];"
+      },
+      "name": "Log summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "1st of month 04:00 IST": {
+      "main": [
+        [
+          {
+            "node": "Analyze competitors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze competitors": {
+      "main": [
+        [
+          {
+            "node": "Refresh content gaps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Refresh content gaps": {
+      "main": [
+        [
+          {
+            "node": "Log summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "errorWorkflow": "pxSeoErrHandler1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "name": "seo-agent"
+    },
+    {
+      "name": "monthly"
+    }
+  ],
+  "versionId": "be416b89-35ee-43a5-a088-f6216af82a05"
+}

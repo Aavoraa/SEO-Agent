@@ -1,0 +1,268 @@
+{
+  "id": "pxSeoDeployEvt01",
+  "name": "SEO Agent – 12 Change Deployment & Notifications",
+  "nodes": [
+    {
+      "id": "6901fd09-decd-4a2f-a1f0-69dfb5393342",
+      "parameters": {
+        "content": "## SEO Agent – 12 Change Deployment & Notifications\nThe SEO Agent POSTs signed events here (set N8N_EVENTS_WEBHOOK_URL=<n8n>/webhook/seo-events and the same N8N_EVENTS_SECRET in both). change.approved → deployment pipeline (backup → deploy → verify → re-score; live only if an admin enabled it). deployment.completed (verified) / rollback.completed → notification. Failures are alerted by the API itself. n8n never approves or rolls back – those are human actions in the app.\n\nRequires n8n env vars: SEO_API_URL, SEO_API_KEY (service key), SEO_PROJECT_ID. All logic runs in the SEO Agent API; every call is retried 3× and failures trigger the Error Handler workflow.",
+        "width": 520,
+        "height": 260
+      },
+      "name": "Note 407403",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -260
+      ]
+    },
+    {
+      "id": "3e61e4f5-9f97-4bf5-acaa-6d20315e88bf",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "seo-events",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "SEO Agent event (webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "c1bc7fe2-3de2-44cd-a8c3-df238ad597ae"
+    },
+    {
+      "id": "8a89a4a8-d0d4-4728-ab7f-4e41e91a0fdb",
+      "parameters": {
+        "jsCode": "// Reject forged or replayed events: HMAC-SHA256 over \"<t>.<body>\" with N8N_EVENTS_SECRET (same value as the API).\nconst crypto = require('crypto');\nconst item = $input.first().json;\nconst sig = String(item.headers['x-phoenixx-signature'] ?? '');\nconst m = /^t=(\\d+),v1=([a-f0-9]{64})$/.exec(sig);\nif (!m) throw new Error('Missing or malformed x-phoenixx-signature');\nif (!$env.N8N_EVENTS_SECRET) throw new Error('N8N_EVENTS_SECRET is not set in n8n');\nconst expected = crypto.createHmac('sha256', $env.N8N_EVENTS_SECRET).update(m[1] + '.' + JSON.stringify(item.body)).digest('hex');\nif (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(m[2]))) throw new Error('Invalid event signature');\nif (Math.abs(Date.now() / 1000 - Number(m[1])) > 300) throw new Error('Stale event (older than 5 minutes)');\nif (item.body.projectId !== $env.SEO_PROJECT_ID) throw new Error('Event for another project');\nreturn [{ json: item.body }];"
+      },
+      "name": "Verify signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "id": "1bcd2ede-b5f3-4db1-a490-a4b2a00c1a86",
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "3f2a04cd-ce47-4baf-a927-491457aebd2f",
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "change.approved",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Change approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "id": "d934cf43-1eef-43b8-af44-d8ceea013c9c",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/jobs/deploy-change?wait=true",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=deploy-{{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ changeId: $json.data.changeId, requestedBy: \"n8n (approved by \" + ($json.data.by ?? \"?\") + \")\" }) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "name": "Deploy + verify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        -100
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000
+    },
+    {
+      "id": "49e95467-4302-4a84-a88b-afc405c1dbe3",
+      "parameters": {
+        "jsCode": "// Summarise job output for the execution log (visible in n8n → Executions).\nconst r = $input.first().json;\nreturn [{ json: { workflow: 'deploy', status: r.status, jobId: r.jobId, correlationId: r.correlationId, output: r.output, finishedAt: new Date().toISOString() } }];"
+      },
+      "name": "Log deployment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -100
+      ]
+    },
+    {
+      "id": "f997670b-b8b2-4bef-ad22-0218263c6301",
+      "parameters": {
+        "jsCode": "const e = $input.first().json;\n// Failures are already alerted by the API itself; only successes and rollbacks are announced here.\nif (!(e.event === 'deployment.completed' && e.data.status === 'verified') && e.event !== 'rollback.completed') return [];\nconst ok = e.event === 'deployment.completed';\nconst score = e.data.auditScore != null ? ' Audit score now ' + e.data.auditScore + '/100.' : '';\nreturn [{ json: {\n  severity: ok ? 'info' : 'medium',\n  type: 'deployment_event',\n  title: ok ? 'SEO change deployed and verified' : 'SEO change rolled back',\n  message: 'Change ' + (e.data.changeId ?? '') + (ok ? ' is live and verified.' + score : ' was rolled back.'),\n  fingerprint: e.event + ':' + (e.data.deploymentId ?? e.data.changeId),\n  evidence: e.data\n} }];"
+      },
+      "name": "Format notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        100
+      ]
+    },
+    {
+      "id": "4ea76907-d1da-4ba2-a679-c0cc05240e50",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/alerts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=deploy-notify-{{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "name": "Notify via SEO Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        100
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000
+    }
+  ],
+  "connections": {
+    "SEO Agent event (webhook)": {
+      "main": [
+        [
+          {
+            "node": "Verify signature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify signature": {
+      "main": [
+        [
+          {
+            "node": "Change approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Change approved?": {
+      "main": [
+        [
+          {
+            "node": "Deploy + verify",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deploy + verify": {
+      "main": [
+        [
+          {
+            "node": "Log deployment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format notification": {
+      "main": [
+        [
+          {
+            "node": "Notify via SEO Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "errorWorkflow": "pxSeoErrHandler1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "name": "seo-agent"
+    },
+    {
+      "name": "deployment"
+    }
+  ],
+  "versionId": "bb75935a-13dc-4dfe-a668-6896e2a92f00"
+}

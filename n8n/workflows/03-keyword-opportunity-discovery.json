@@ -1,0 +1,184 @@
+{
+  "id": "pxSeoKeywordDisc",
+  "name": "SEO Agent – 03 Keyword Opportunity Discovery",
+  "nodes": [
+    {
+      "id": "db092ebd-7066-4bf5-a29b-51f9be938516",
+      "parameters": {
+        "content": "## SEO Agent – 03 Keyword Opportunity Discovery\nSchedule → Search Console → Keyword processor → Intent classification (rules, AI refines low-confidence only) → Clustering → Opportunity scoring → Database. Search volume is never fabricated; impressions are the demand signal.\n\nRequires n8n env vars: SEO_API_URL, SEO_API_KEY (service key), SEO_PROJECT_ID. All logic runs in the SEO Agent API; every call is retried 3× and failures trigger the Error Handler workflow.",
+        "width": 520,
+        "height": 260
+      },
+      "name": "Note 6b0c5f",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -260
+      ]
+    },
+    {
+      "id": "7c8c46ae-1fd6-4210-affd-1c0e480cbdde",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 3 * * 2"
+            }
+          ]
+        }
+      },
+      "name": "Every Tuesday 03:00 IST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "f73d48b4-6d74-4b44-a455-a460b8aafe44",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/jobs/gsc-sync?wait=true",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=keyword-discovery-{{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"days\": 16 }",
+        "options": {
+          "timeout": 1800000
+        }
+      },
+      "name": "Refresh Search Console",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000
+    },
+    {
+      "id": "81d142bf-45a1-48f0-a260-c110e9a73990",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/jobs/keywords?wait=true",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=keyword-discovery-{{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"useAi\": true }",
+        "options": {
+          "timeout": 1800000
+        }
+      },
+      "name": "Process, classify, cluster, score",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000
+    },
+    {
+      "id": "4089e728-5e29-43f8-a203-f7d18bd69062",
+      "parameters": {
+        "jsCode": "// Summarise job output for the execution log (visible in n8n → Executions).\nconst r = $input.first().json;\nreturn [{ json: { workflow: 'keyword-discovery', status: r.status, jobId: r.jobId, correlationId: r.correlationId, output: r.output, finishedAt: new Date().toISOString() } }];"
+      },
+      "name": "Log summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Every Tuesday 03:00 IST": {
+      "main": [
+        [
+          {
+            "node": "Refresh Search Console",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Refresh Search Console": {
+      "main": [
+        [
+          {
+            "node": "Process, classify, cluster, score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process, classify, cluster, score": {
+      "main": [
+        [
+          {
+            "node": "Log summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "errorWorkflow": "pxSeoErrHandler1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "name": "seo-agent"
+    },
+    {
+      "name": "weekly"
+    }
+  ],
+  "versionId": "bde8c55e-cef4-4b69-a922-b01601defdb2"
+}

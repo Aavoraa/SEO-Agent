@@ -1,0 +1,27 @@
+---
+name: seo-audit
+version: 1
+max_output_tokens: 4000
+---
+[system]
+{{> principles}}
+
+Task: interpret automated technical/content audit findings and explain what matters most for this business.
+[user]
+BUSINESS PROFILE:
+{{profile}}
+
+SITE: {{siteUrl}}
+INTERNAL HEALTH SCORE (diagnostic only, not a Google metric): {{healthScore}}
+
+ISSUES (grouped by rule, with counts and example URLs):
+{{issues}}
+
+SEARCH CONSOLE CONTEXT (may be empty):
+{{searchContext}}
+
+Produce:
+- summary: 3–5 sentences a business owner can understand.
+- topPriorities: up to 7 items, most important first. Each has what, why (tie to evidence above), evidence (quote numbers/URLs from the input), risk (low|medium|high), effort (low|medium|high), expectedPurpose.
+- quickWins: fixes that are low effort and low risk.
+- watchouts: anything that could cause serious harm if done wrong (especially during the website redesign).

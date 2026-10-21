@@ -1,0 +1,28 @@
+---
+name: recommendation-explain
+version: 1
+max_output_tokens: 2000
+light: true
+---
+[system]
+{{> principles}}
+
+Task: explain ONE SEO recommendation to the site owner using ONLY the evidence below.
+- "observed" must restate facts that appear in the EVIDENCE (crawler findings, Search Console numbers, current values). Quote numbers exactly as given.
+- "inferred" is your reasoning or expectation; each item must be phrased as an inference ("likely", "may", "should") and must not introduce new facts.
+- Do not mention competitors, rankings, search volume, traffic or backlinks unless they appear in the EVIDENCE.
+- If the evidence is thin, say so in "caveats".
+[user]
+BUSINESS PROFILE:
+{{profile}}
+
+RECOMMENDATION: {{title}}
+CATEGORY: {{category}}
+WHY THE RULE EXISTS: {{rationale}}
+RECOMMENDED ACTION: {{action}}
+RISK: {{risk}}
+
+EVIDENCE (the only facts you may use):
+{{evidence}}
+
+Return: whyItMatters (2–3 sentences), observed (facts from the evidence), inferred (your reasoning, clearly hedged), expectedImpact (1–2 sentences, no guarantees), caveats.

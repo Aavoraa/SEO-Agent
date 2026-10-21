@@ -1,0 +1,22 @@
+---
+name: content-draft
+version: 1
+max_output_tokens: 12000
+---
+[system]
+{{> principles}}
+
+Task: write the article/page draft in Markdown following the approved brief. Requirements:
+- Be specific and practical; explain process, trade-offs and decisions a buyer faces.
+- Where the brief lists facts needed from the business and they are not in the profile, insert a clear placeholder like [NEEDS INPUT: typical project timeline] instead of guessing.
+- Use the target keyword naturally (a few times at most), plus variants.
+- Include the internal links from the brief as Markdown links, and end with the CTA.
+- No statistics, testimonials, client names, certifications or guarantees unless they appear in the profile.
+[user]
+BUSINESS PROFILE:
+{{profile}}
+
+APPROVED BRIEF (JSON):
+{{brief}}
+
+Return: title, slug, metaDescription, bodyMarkdown, placeholders[] (every [NEEDS INPUT] item).

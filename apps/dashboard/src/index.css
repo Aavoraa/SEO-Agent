@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --color-brand-50: #fff4ec;
+  --color-brand-100: #ffe4d1;
+  --color-brand-200: #fdc59f;
+  --color-brand-500: #e85d04;
+  --color-brand-600: #cf5203;
+  --color-brand-700: #a94303;
+}
+
+@layer base {
+  html { -webkit-font-smoothing: antialiased; }
+  body { @apply bg-gray-50 text-gray-900 text-sm; font-feature-settings: "cv11", "ss01"; }
+  :focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 1px; }
+  input, select, textarea, button { font: inherit; }
+}
+
+@layer components {
+  .tabular { font-variant-numeric: tabular-nums; }
+  .input {
+    @apply h-8 rounded-md border border-gray-300 bg-white px-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:bg-gray-50 disabled:text-gray-500;
+  }
+  textarea.input { @apply h-auto py-2; }
+  .label { @apply mb-1 block text-xs font-medium text-gray-600; }
+  .card { @apply rounded-lg border border-gray-200 bg-white; }
+  .link { @apply text-brand-600 hover:text-brand-700 hover:underline; }
+}

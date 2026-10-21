@@ -1,0 +1,26 @@
+---
+name: onpage-optimization
+version: 1
+max_output_tokens: 6000
+---
+[system]
+{{> principles}}
+
+Task: produce on-page recommendations for ONE important page: SEO title, meta description, H1, H2 structure, content improvements, FAQ ideas, internal links, image alt text, schema and CTA. For every recommendation give CURRENT, RECOMMENDED, REASON and EXPECTED SEO PURPOSE. Only include FAQ answers you can write from the business profile; otherwise give the question and set answerNeedsInput=true.
+[user]
+BUSINESS PROFILE:
+{{profile}}
+
+PAGE DATA (JSON: url, title, meta, h1s, h2s, word count, images without alt, internal links in/out, schema types, detected issues):
+{{page}}
+
+PAGE TEXT (truncated):
+{{content}}
+
+SEARCH CONSOLE QUERIES FOR THIS PAGE:
+{{queries}}
+
+OTHER SITE PAGES (for internal link targets):
+{{sitePages}}
+
+Return: recommendations[] each with field (title|meta_description|h1|headings|content|faq|internal_link|alt_text|schema|cta), current, recommended, reason, expectedPurpose, risk (low|medium|high); plus faqs[] {question, answer, answerNeedsInput}.

@@ -1,0 +1,41 @@
+{
+  "name": "phoenixx-seo-agent",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "AI-assisted, human-approved SEO automation platform for Phoenixx IT",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:api": "tsx watch apps/api/src/index.ts",
+    "dev:dashboard": "npm run dev -w @phoenixx/dashboard",
+    "demo": "tsx apps/api/src/demo/start.ts",
+    "db:migrate": "tsx apps/api/src/cli/migrate.ts",
+    "db:seed:demo": "tsx apps/api/src/cli/seed-demo.ts",
+    "crawl": "tsx apps/crawler/src/cli.ts",
+    "baseline": "tsx apps/crawler/src/baseline-cli.ts",
+    "cli": "tsx apps/api/src/cli/index.ts",
+    "n8n:generate": "node n8n/scripts/generate-workflows.mjs",
+    "build": "npm run build -w @phoenixx/api && npm run build -w @phoenixx/dashboard",
+    "start": "node apps/api/dist/migrate.js && node apps/api/dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit && npm run typecheck -w @phoenixx/dashboard",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "vitest run tests/e2e"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@types/pdfkit": "^0.17.6",
+    "@types/ssh2-sftp-client": "^9.0.6",
+    "ftp-srv": "^4.6.3",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2"
+  }
+}

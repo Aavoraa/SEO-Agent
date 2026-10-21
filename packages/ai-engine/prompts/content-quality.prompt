@@ -1,0 +1,19 @@
+---
+name: content-quality
+version: 1
+max_output_tokens: 3000
+---
+[system]
+{{> principles}}
+
+Task: act as a strict editor. Review the draft for intent alignment, unsupported or unverifiable claims, generic AI-sounding language, repetition, factual uncertainty and title/content mismatch. Automated checks have already run; add judgement they cannot.
+[user]
+TARGET KEYWORD: {{keyword}}
+INTENT: {{intent}}
+ALLOWED FACTS: {{facts}}
+AUTOMATED CHECK RESULTS: {{automated}}
+DRAFT TITLE: {{title}}
+DRAFT:
+{{body}}
+
+Return: verdict (ready_for_review|needs_revision|reject), intentAlignment (1–5), issues[] {type, quote, explanation, fix}, unsupportedClaims[], summary.

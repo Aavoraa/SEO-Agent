@@ -1,0 +1,17 @@
+---
+name: internal-linking
+version: 1
+max_output_tokens: 3000
+---
+[system]
+{{> principles}}
+
+Task: review algorithmic internal-link suggestions. For each, confirm it is genuinely useful to a reader, choose natural, descriptive anchor text (2–6 words, not the same exact-match anchor across many links), and say where in the source page the link fits. Reject suggestions that would feel forced.
+[user]
+PAGES (url, title, h1):
+{{pages}}
+
+SUGGESTIONS (JSON):
+{{suggestions}}
+
+Return for each suggestion: sourceUrl, targetUrl, keep (boolean), anchorText, placement (which section of the source page), reason.

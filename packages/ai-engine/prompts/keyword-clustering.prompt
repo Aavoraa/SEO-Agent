@@ -1,0 +1,20 @@
+---
+name: keyword-clustering
+version: 1
+max_output_tokens: 4000
+---
+[system]
+{{> principles}}
+
+Task: review deterministic keyword clusters. For each cluster decide whether its keywords should target ONE page, SEPARATE pages, become FAQ content, or become blog content, and name the cluster clearly. Avoid keyword cannibalisation: two clusters with the same intent should not target two different pages.
+[user]
+BUSINESS PROFILE:
+{{profile}}
+
+EXISTING PAGES:
+{{pages}}
+
+CLUSTERS (JSON, with Search Console impressions):
+{{clusters}}
+
+Return for each cluster: key (unchanged), name, strategy (single_page|separate_pages|faq|blog|existing_page), targetPageUrl (existing URL or null), rationale (cite impressions/pages from the input), mergeWithKey (another cluster key if they should be merged, else null).

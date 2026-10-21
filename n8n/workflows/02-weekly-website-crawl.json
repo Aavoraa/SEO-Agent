@@ -1,0 +1,286 @@
+{
+  "id": "pxSeoWeeklyCrawl",
+  "name": "SEO Agent – 02 Weekly Website Crawl & SEO Audit",
+  "nodes": [
+    {
+      "id": "881cd7b5-cedb-42c5-aa50-fc030bfec49f",
+      "parameters": {
+        "content": "## SEO Agent – 02 Weekly Website Crawl & SEO Audit\nSchedule → Crawler → Technical SEO analyzer → 10-category SEO audit score (stored in audit history) → Issue detection → AI analysis (only when the issue set changed) → Recommendations → mobile audit. Critical findings are dispatched immediately.\n\nRequires n8n env vars: SEO_API_URL, SEO_API_KEY (service key), SEO_PROJECT_ID. All logic runs in the SEO Agent API; every call is retried 3× and failures trigger the Error Handler workflow.",
+        "width": 520,
+        "height": 260
+      },
+      "name": "Note db6657",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -260
+      ]
+    },
+    {
+      "id": "fecb625c-4012-4a49-a664-f06b523a3088",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * 1"
+            }
+          ]
+        }
+      },
+      "name": "Every Monday 02:00 IST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "7bb4b3f8-852b-45b3-aa29-9555a6bde97a",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/jobs/seo-audit?wait=true",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=weekly-audit-{{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"aiSummary\": true, \"device\": \"desktop\" }",
+        "options": {
+          "timeout": 2700000
+        }
+      },
+      "name": "Crawl + audit + recommend (desktop)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000
+    },
+    {
+      "id": "a9a5bf44-5326-47fe-a0aa-221d70219eca",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/jobs/seo-audit?wait=true",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=weekly-audit-{{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"aiSummary\": false, \"device\": \"mobile\" }",
+        "options": {
+          "timeout": 2700000
+        }
+      },
+      "name": "Mobile audit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000,
+      "onError": "continueRegularOutput",
+      "notes": "Optional step – failures are logged in job_runs but do not stop the workflow."
+    },
+    {
+      "id": "1b7235f3-181a-4bf2-aef8-f7c9adf03824",
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "01695be4-f53e-49ec-a214-16b36a98605e",
+              "leftValue": "={{ $('Crawl + audit + recommend (desktop)').first().json.output.issues.critical ?? 0 }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Critical issues found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "id": "a2a0483b-feff-465f-ad35-e6fa6882c536",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/jobs/alerts-dispatch?wait=true",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=weekly-audit-{{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {
+          "timeout": 1800000
+        }
+      },
+      "name": "Dispatch alerts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        -100
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000
+    },
+    {
+      "id": "fc51f80e-8064-47a4-a563-2d494093ae57",
+      "parameters": {
+        "jsCode": "// Summarise job output for the execution log (visible in n8n → Executions).\nconst r = $input.first().json;\nreturn [{ json: { workflow: 'weekly-audit', status: r.status, jobId: r.jobId, correlationId: r.correlationId, output: r.output, finishedAt: new Date().toISOString() } }];"
+      },
+      "name": "Log summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Every Monday 02:00 IST": {
+      "main": [
+        [
+          {
+            "node": "Crawl + audit + recommend (desktop)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crawl + audit + recommend (desktop)": {
+      "main": [
+        [
+          {
+            "node": "Mobile audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mobile audit": {
+      "main": [
+        [
+          {
+            "node": "Critical issues found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Critical issues found?": {
+      "main": [
+        [
+          {
+            "node": "Dispatch alerts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispatch alerts": {
+      "main": [
+        [
+          {
+            "node": "Log summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "errorWorkflow": "pxSeoErrHandler1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "name": "seo-agent"
+    },
+    {
+      "name": "weekly"
+    },
+    {
+      "name": "audit"
+    }
+  ],
+  "versionId": "a54883d6-aa4a-468c-a25d-e83b2f71b682"
+}

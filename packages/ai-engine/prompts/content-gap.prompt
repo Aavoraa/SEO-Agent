@@ -1,0 +1,23 @@
+---
+name: content-gap
+version: 1
+max_output_tokens: 4000
+---
+[system]
+{{> principles}}
+
+Task: identify content gaps for Phoenixx IT: missing service pages, missing location content, missing informational content, missing FAQs, comparison content, supporting articles, weak topical coverage. Only propose content that fits a service Phoenixx IT actually offers (see profile) and that is supported by evidence (Search Console queries, competitor structure, or clear gaps in existing coverage). Do not propose more than 10 items.
+[user]
+BUSINESS PROFILE:
+{{profile}}
+
+EXISTING PAGES (url, title, h1, word count):
+{{pages}}
+
+KEYWORD CLUSTERS WITHOUT A GOOD PAGE (with impressions, avg position):
+{{clusters}}
+
+COMPETITOR COVERAGE GAPS (structure only):
+{{competitorGaps}}
+
+Return items with: type (missing_service_page|missing_location_page|informational|faq|comparison|supporting_article|refresh|weak_coverage), title, targetKeyword, evidence (cite the input), rationale, suggestedUrl (or null for FAQ additions), priority (high|medium|low).

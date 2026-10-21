@@ -1,0 +1,233 @@
+{
+  "id": "pxSeoDailyMon001",
+  "name": "SEO Agent – 01 Daily SEO Monitor",
+  "nodes": [
+    {
+      "id": "da19e82e-eecb-4381-abea-8ec02fc86d23",
+      "parameters": {
+        "content": "## SEO Agent – 01 Daily SEO Monitor\nSchedule → Fetch Search Console → Fetch GA4 → Analyze performance / detect anomalies (traffic drops, ranking losses, uptime) → Store → Generate & dispatch alerts.\n\nRequires n8n env vars: SEO_API_URL, SEO_API_KEY (service key), SEO_PROJECT_ID. All logic runs in the SEO Agent API; every call is retried 3× and failures trigger the Error Handler workflow.",
+        "width": 520,
+        "height": 260
+      },
+      "name": "Note 7e8ed3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -260
+      ]
+    },
+    {
+      "id": "e9ae8d97-8d10-473c-abeb-650b24e50cd0",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 6 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Every day 06:30 IST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "9f05c722-1e6e-4100-a45a-8f33c46faaf2",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/jobs/gsc-sync?wait=true",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=daily-monitor-{{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"days\": 16 }",
+        "options": {
+          "timeout": 1800000
+        }
+      },
+      "name": "Fetch Search Console",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000
+    },
+    {
+      "id": "75f76f2f-bf00-4907-a58b-aaef74754058",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/jobs/ga4-sync?wait=true",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=daily-monitor-{{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"days\": 16 }",
+        "options": {
+          "timeout": 1800000
+        }
+      },
+      "name": "Fetch GA4",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000,
+      "onError": "continueRegularOutput",
+      "notes": "Optional step – failures are logged in job_runs but do not stop the workflow."
+    },
+    {
+      "id": "4bbaae29-bd56-41fc-a301-0dbd1d9836b5",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/jobs/alerts-evaluate?wait=true",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=daily-monitor-{{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {
+          "timeout": 1800000
+        }
+      },
+      "name": "Analyze & detect anomalies",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000
+    },
+    {
+      "id": "8a6cbb8a-3e51-46e5-acd9-bc3cdd09f780",
+      "parameters": {
+        "jsCode": "// Summarise job output for the execution log (visible in n8n → Executions).\nconst r = $input.first().json;\nreturn [{ json: { workflow: 'daily-monitor', status: r.status, jobId: r.jobId, correlationId: r.correlationId, output: r.output, finishedAt: new Date().toISOString() } }];"
+      },
+      "name": "Log summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Every day 06:30 IST": {
+      "main": [
+        [
+          {
+            "node": "Fetch Search Console",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Search Console": {
+      "main": [
+        [
+          {
+            "node": "Fetch GA4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch GA4": {
+      "main": [
+        [
+          {
+            "node": "Analyze & detect anomalies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze & detect anomalies": {
+      "main": [
+        [
+          {
+            "node": "Log summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "errorWorkflow": "pxSeoErrHandler1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "name": "seo-agent"
+    },
+    {
+      "name": "daily"
+    }
+  ],
+  "versionId": "298fa62f-c383-4e89-a1f2-7934a9668ccf"
+}

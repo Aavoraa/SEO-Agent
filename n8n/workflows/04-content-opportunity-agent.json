@@ -1,0 +1,254 @@
+{
+  "id": "pxSeoContentAgnt",
+  "name": "SEO Agent – 04 Content Opportunity Agent",
+  "nodes": [
+    {
+      "id": "9073b453-1fa8-4bbf-a201-e7daec21d32f",
+      "parameters": {
+        "content": "## SEO Agent – 04 Content Opportunity Agent\nKeyword opportunities → Content gap analysis → AI → Content brief → HUMAN APPROVAL. Generates briefs for the top 3 high-priority opportunities; briefs land in the Approval Center. n8n can never approve or publish.\n\nRequires n8n env vars: SEO_API_URL, SEO_API_KEY (service key), SEO_PROJECT_ID. All logic runs in the SEO Agent API; every call is retried 3× and failures trigger the Error Handler workflow.",
+        "width": 520,
+        "height": 260
+      },
+      "name": "Note 784805",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -260
+      ]
+    },
+    {
+      "id": "72a68450-adb1-44dd-a102-3ccb596ead57",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 3 * * 3"
+            }
+          ]
+        }
+      },
+      "name": "Every Wednesday 03:00 IST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "ce6afca5-c37b-4485-a381-4da27eeb832b",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/jobs/content-opportunities?wait=true",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=content-agent-{{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"useAi\": true }",
+        "options": {
+          "timeout": 1800000
+        }
+      },
+      "name": "Content gap analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000
+    },
+    {
+      "id": "405ad2e1-b78b-4274-a9d7-49f4a48ad877",
+      "parameters": {
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/content",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=content-agent-{{ $execution.id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "name": "Load opportunities",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 10000
+    },
+    {
+      "id": "b0214ff9-2f17-49f2-a998-e7632d9896f0",
+      "parameters": {
+        "jsCode": "const opps = ($input.first().json.opportunities ?? [])\n  .filter(o => o.status === 'open' && ['high','critical'].includes(o.priority))\n  .slice(0, 3);\nreturn opps.map(o => ({ json: { id: o.id, title: o.title, score: o.score } }));"
+      },
+      "name": "Pick top 3 open high-priority",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "id": "c13709c4-b07d-4cb3-ab73-0af34ec624ad",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/content/opportunities/{{ $json.id }}/brief",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=content-agent-{{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "name": "Generate brief (→ approval queue)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000
+    },
+    {
+      "id": "1f29bfed-ed7a-440b-a376-ae29316d042e",
+      "parameters": {
+        "jsCode": "return [{ json: { workflow: 'content-agent', briefsCreated: $input.all().length, note: 'Briefs await human approval in the Approval Center.' } }];"
+      },
+      "name": "Log summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Every Wednesday 03:00 IST": {
+      "main": [
+        [
+          {
+            "node": "Content gap analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Content gap analysis": {
+      "main": [
+        [
+          {
+            "node": "Load opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load opportunities": {
+      "main": [
+        [
+          {
+            "node": "Pick top 3 open high-priority",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick top 3 open high-priority": {
+      "main": [
+        [
+          {
+            "node": "Generate brief (→ approval queue)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate brief (→ approval queue)": {
+      "main": [
+        [
+          {
+            "node": "Log summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "errorWorkflow": "pxSeoErrHandler1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "name": "seo-agent"
+    },
+    {
+      "name": "weekly"
+    },
+    {
+      "name": "content"
+    }
+  ],
+  "versionId": "4c1417a7-4e5b-4fd8-a2d8-d69266ad724a"
+}

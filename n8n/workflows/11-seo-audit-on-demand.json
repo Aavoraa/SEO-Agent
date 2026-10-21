@@ -1,0 +1,134 @@
+{
+  "id": "pxSeoAuditHook01",
+  "name": "SEO Agent – 11 SEO Audit (on demand)",
+  "nodes": [
+    {
+      "id": "a04a3305-758b-45ba-a455-bff100fb3463",
+      "parameters": {
+        "content": "## SEO Agent – 11 SEO Audit (on demand)\nWebhook → full crawl → 10-category SEO audit (score, checks, quick wins) → audit history. POST {\"device\": \"desktop\" | \"mobile\"} to /webhook/seo-audit. The weekly audit runs in workflow 02.\n\nRequires n8n env vars: SEO_API_URL, SEO_API_KEY (service key), SEO_PROJECT_ID. All logic runs in the SEO Agent API; every call is retried 3× and failures trigger the Error Handler workflow.",
+        "width": 520,
+        "height": 260
+      },
+      "name": "Note 08adde",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -260
+      ]
+    },
+    {
+      "id": "92930837-16f9-4028-ac74-dd6797a0f198",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "seo-audit",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "name": "Audit requested (webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "d9f8cfc9-e82a-43d5-a7e2-6836c8aaa33c"
+    },
+    {
+      "id": "ecc7531e-841d-4c72-adb9-995bcc708c35",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/jobs/seo-audit?wait=true",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=seo-audit-{{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ device: $json.body?.device === 'mobile' ? 'mobile' : 'desktop', aiSummary: true }) }}",
+        "options": {
+          "timeout": 2700000
+        }
+      },
+      "name": "Run SEO audit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000
+    },
+    {
+      "id": "26025c71-f3d6-473b-a538-2e524f2c73e2",
+      "parameters": {
+        "jsCode": "const r = $input.first().json;\nreturn [{ json: { ok: r.status === 'succeeded', auditId: r.output?.auditId ?? null, score: r.output?.auditScore ?? null, pages: r.output?.pagesCrawled ?? null } }];"
+      },
+      "name": "Respond",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Audit requested (webhook)": {
+      "main": [
+        [
+          {
+            "node": "Run SEO audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run SEO audit": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "errorWorkflow": "pxSeoErrHandler1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "name": "seo-agent"
+    },
+    {
+      "name": "audit"
+    }
+  ],
+  "versionId": "05fa3c61-d070-49af-a6c7-7e7e000e9682"
+}

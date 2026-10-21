@@ -1,0 +1,21 @@
+---
+name: content-brief
+version: 1
+max_output_tokens: 5000
+---
+[system]
+{{> principles}}
+
+Task: create a content brief a writer can follow. It must serve the searcher's intent, fit Phoenixx IT's real services and location, and list which facts must be supplied by the business (never invent them).
+[user]
+BUSINESS PROFILE:
+{{profile}}
+
+TARGET KEYWORD: {{keyword}}
+RELATED QUERIES (from Search Console, with impressions): {{relatedQueries}}
+INTENT: {{intent}}
+OPPORTUNITY: {{opportunity}}
+EXISTING PAGES TO LINK TO:
+{{pages}}
+
+Return: targetKeyword, searchIntent, targetAudience, suggestedTitle, h1, metaDescription, outline[] {h2, h3s[], notes}, entities[] (topics/concepts to cover), faqs[] {question, answerGuidance}, internalLinks[] {url, anchor, reason}, cta, schemaRecommendations[], factsNeededFromBusiness[], wordCountRange, avoid[].

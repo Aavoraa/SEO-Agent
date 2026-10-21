@@ -1,0 +1,123 @@
+{
+  "id": "pxSeoErrHandler1",
+  "name": "SEO Agent – Error Handler",
+  "nodes": [
+    {
+      "id": "8ee3894d-9020-4723-a27e-aa5d4b027121",
+      "parameters": {
+        "content": "## SEO Agent – Error Handler\nRuns whenever any SEO Agent workflow fails (after retries). Creates a HIGH alert in the SEO Agent (visible on the dashboard) which is dispatched to the configured Email / Slack / Teams / Telegram channels. n8n failures never disappear silently.\n\nRequires n8n env vars: SEO_API_URL, SEO_API_KEY (service key), SEO_PROJECT_ID. All logic runs in the SEO Agent API; every call is retried 3× and failures trigger the Error Handler workflow.",
+        "width": 520,
+        "height": 260
+      },
+      "name": "Note 01bf2e",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -260
+      ]
+    },
+    {
+      "id": "8870af90-48e5-4c3d-a5ce-b1581fa45b43",
+      "parameters": {},
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "cc0b4a14-8f0d-4f7b-a4d6-3c7fbffb1ca1",
+      "parameters": {
+        "jsCode": "const e = $input.first().json;\nconst wf = e.workflow?.name ?? 'unknown workflow';\nconst node = e.execution?.lastNodeExecuted ?? 'unknown node';\nconst msg = (e.execution?.error?.message ?? 'Unknown error').slice(0, 1500);\nreturn [{ json: {\n  severity: 'high',\n  type: 'n8n_workflow_failed',\n  title: 'Automation failed: ' + wf,\n  message: 'Node \"' + node + '\" failed after retries: ' + msg + (e.execution?.url ? '\\nExecution: ' + e.execution.url : ''),\n  fingerprint: 'n8n:' + wf + ':' + node,\n  evidence: { workflow: wf, node, executionId: e.execution?.id ?? null, mode: e.execution?.mode ?? null }\n} }];"
+      },
+      "name": "Build alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "id": "120d78f9-d4a1-4474-ae83-4b4a8e02d7ad",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/alerts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "name": "Raise alert in SEO Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 60000
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build alert": {
+      "main": [
+        [
+          {
+            "node": "Raise alert in SEO Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "name": "seo-agent"
+    },
+    {
+      "name": "ops"
+    }
+  ],
+  "versionId": "65c326e7-6050-40da-ae4c-0b36390a7578"
+}

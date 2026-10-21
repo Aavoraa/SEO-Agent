@@ -1,0 +1,238 @@
+{
+  "id": "pxSeoBacklinks01",
+  "name": "SEO Agent – 10 Weekly Backlink Monitor",
+  "nodes": [
+    {
+      "id": "8a4a5439-20de-451f-a91e-953108dae963",
+      "parameters": {
+        "content": "## SEO Agent – 10 Weekly Backlink Monitor\nPull backlinks from the configured provider (optional; CSV imports work without one) → check every linking page live → alert on lost links → 301 recommendations for links pointing at broken pages (admin approval). Monitoring only: never contacts sites or builds links.\n\nRequires n8n env vars: SEO_API_URL, SEO_API_KEY (service key), SEO_PROJECT_ID. All logic runs in the SEO Agent API; every call is retried 3× and failures trigger the Error Handler workflow.",
+        "width": 520,
+        "height": 260
+      },
+      "name": "Note daa8d1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -260
+      ]
+    },
+    {
+      "id": "b0e1896b-af5c-4130-a429-6cbaa138111d",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 4 * * 3"
+            }
+          ]
+        }
+      },
+      "name": "Every Wednesday 04:00 IST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "7f8be5b5-b71a-46ea-a58c-15ce9d585e51",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/jobs/backlinks-sync?wait=true",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=backlinks-{{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {
+          "timeout": 1800000
+        }
+      },
+      "name": "Sync backlinks from provider",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000,
+      "onError": "continueRegularOutput",
+      "notes": "Optional step – failures are logged in job_runs but do not stop the workflow."
+    },
+    {
+      "id": "7110e0f1-a546-43fa-a5f9-8f1b6049726c",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/jobs/backlinks-verify?wait=true",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=backlinks-{{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {
+          "timeout": 2400000
+        }
+      },
+      "name": "Verify links + broken targets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000
+    },
+    {
+      "id": "aa6e4a3f-deaa-476a-a305-939a093309bc",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SEO_API_URL }}/api/projects/{{ $env.SEO_PROJECT_ID }}/jobs/alerts-dispatch?wait=true",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.SEO_API_KEY }}"
+            },
+            {
+              "name": "x-correlation-id",
+              "value": "=backlinks-{{ $execution.id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {
+          "timeout": 1800000
+        }
+      },
+      "name": "Send alerts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 30000,
+      "onError": "continueRegularOutput",
+      "notes": "Optional step – failures are logged in job_runs but do not stop the workflow."
+    },
+    {
+      "id": "ac14ec1f-302c-4b94-abf9-efb730cc5b28",
+      "parameters": {
+        "jsCode": "// Summarise job output for the execution log (visible in n8n → Executions).\nconst r = $input.first().json;\nreturn [{ json: { workflow: 'backlinks', status: r.status, jobId: r.jobId, correlationId: r.correlationId, output: r.output, finishedAt: new Date().toISOString() } }];"
+      },
+      "name": "Log summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Every Wednesday 04:00 IST": {
+      "main": [
+        [
+          {
+            "node": "Sync backlinks from provider",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sync backlinks from provider": {
+      "main": [
+        [
+          {
+            "node": "Verify links + broken targets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify links + broken targets": {
+      "main": [
+        [
+          {
+            "node": "Send alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send alerts": {
+      "main": [
+        [
+          {
+            "node": "Log summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "errorWorkflow": "pxSeoErrHandler1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "name": "seo-agent"
+    },
+    {
+      "name": "weekly"
+    },
+    {
+      "name": "backlinks"
+    }
+  ],
+  "versionId": "9137b6dd-892c-4bb4-ac4f-417835b6e8cf"
+}

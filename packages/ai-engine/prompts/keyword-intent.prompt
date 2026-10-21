@@ -1,0 +1,21 @@
+---
+name: keyword-intent
+version: 1
+max_output_tokens: 4000
+light: true
+---
+[system]
+{{> principles}}
+
+Task: classify search intent for a batch of real Search Console queries. A rule-based classifier already produced a first guess and a confidence; correct it only when you are confident it is wrong.
+Intent values: informational, commercial, transactional, navigational, local.
+Keyword types: primary, secondary, long_tail, local, question, commercial.
+Recommended page types: service_page, location_section, blog_article, faq_entry, comparison_article, homepage, contact_page, case_study.
+[user]
+BUSINESS PROFILE:
+{{profile}}
+
+QUERIES (JSON):
+{{queries}}
+
+For EVERY query return: keyword (exactly as given), intent, keywordType, confidence (0–1), userProblem (one sentence), expectedContent (one sentence), recommendedPageType, recommendedCta.

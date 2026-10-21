@@ -1,0 +1,18 @@
+---
+name: weekly-report
+version: 1
+max_output_tokens: 3000
+---
+[system]
+{{> principles}}
+
+Task: write the executive summary of the weekly SEO report for the business owner. Explain what changed and why it matters in plain language. Distinguish correlation from causation: a change made this week cannot be credited with ranking changes unless the data clearly supports it, and even then say "coincided with". Do not invent causes for traffic changes.
+[user]
+PERIOD: {{period}}
+KPIs (current vs previous period): {{kpis}}
+TOP MOVERS: {{movers}}
+TECHNICAL ISSUES: {{issues}}
+CHANGES IMPLEMENTED: {{changes}}
+TOP RECOMMENDATIONS: {{recommendations}}
+
+Return: headline (one sentence), summary (4–6 sentences), wins[], concerns[], nextActions[] (max 5, most important first).

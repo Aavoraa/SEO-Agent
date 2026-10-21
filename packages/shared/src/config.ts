@@ -177,7 +177,11 @@ export function loadDotEnv(): void {
 export function loadConfig(env: Record<string, string | undefined> = process.env, opts: { fresh?: boolean } = {}): AppConfig {
   if (env === process.env) loadDotEnv();
   if (cached && !opts.fresh && env === process.env) return cached;
-  const parsed = envSchema.safeParse(env);
+  // On Render the API serves the dashboard from the same origin: default the public URLs to the service address.
+  const hostUrl = env.RENDER_EXTERNAL_URL;
+  // PaaS hosts (Render, Railway, Heroku) route traffic to $PORT.
+  const defaults: Record<string, string> = { ...(hostUrl ? { FRONTEND_URL: hostUrl, PUBLIC_API_URL: hostUrl } : {}), ...(env.PORT ? { API_PORT: env.PORT } : {}) };
+  const parsed = envSchema.safeParse({ ...defaults, ...env });
   if (!parsed.success) {
     const msg = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
     throw new Error(`Invalid environment configuration: ${msg}`);

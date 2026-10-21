@@ -14,6 +14,8 @@ export async function createProject(
     ga4PropertyId?: string;
     /** Owning organization (defaults to the internal/demo organization for single-tenant installs). */
     organizationId?: string;
+    /** Fixed id (demo seed only – keeps ids identical across serverless instances). */
+    id?: string;
     /** Customer projects start with an empty profile (services/locations filled during onboarding). */
     blankProfile?: boolean;
   },
@@ -28,7 +30,7 @@ export async function createProject(
   const profile = input.businessProfile ?? (isPhoenixx ? DEFAULT_BUSINESS_PROFILE : input.blankProfile ? blank : { ...blank, services: DEFAULT_BUSINESS_PROFILE.services, locations: DEFAULT_BUSINESS_PROFILE.locations });
   const orgId = input.organizationId ?? (await defaultOrganization(ctx, { demo: input.isDemo })).id;
   return ctx.db.transaction(async (tx) => {
-    const [p] = await tx.query<{ id: string }>(`INSERT INTO projects(name, slug, is_demo, business_profile, settings, organization_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`, [input.name, slug, input.isDemo ?? false, profile, { searchConsoleSiteUrl: input.searchConsoleSiteUrl, ga4PropertyId: input.ga4PropertyId, automation: { level: 2 } }, orgId]);
+    const [p] = await tx.query<{ id: string }>(`INSERT INTO projects(id, name, slug, is_demo, business_profile, settings, organization_id) VALUES (COALESCE($7::uuid, gen_random_uuid()),$1,$2,$3,$4,$5,$6) RETURNING id`, [input.name, slug, input.isDemo ?? false, profile, { searchConsoleSiteUrl: input.searchConsoleSiteUrl, ga4PropertyId: input.ga4PropertyId, automation: { level: 2 } }, orgId, input.id ?? null]);
     await tx.query(`INSERT INTO websites(project_id, base_url, role, sitemap_url, is_primary, adapter_type) VALUES ($1,$2,'production',$3,true,$4)`, [p!.id, base, new URL('/sitemap.xml', base).toString(), ctx.cfg.WEBSITE_ADAPTER]);
     return { id: p!.id, slug };
   });

@@ -199,6 +199,10 @@ function loadSampleCrawl(): CrawlOutput {
   return JSON.parse(readFileSync(file, 'utf8'));
 }
 
+/** Fixed ids so every serverless instance seeds an identical demo (sessions and URLs stay valid across instances). */
+export const DEMO_USER_ID = '00000000-0000-4000-8000-0000000de301';
+export const DEMO_PROJECT_ID = '00000000-0000-4000-8000-0000000de302';
+
 export async function seedDemo(ctx: AppContext, opts: { log?: (m: string) => void } = {}) {
   const log = opts.log ?? (() => undefined);
   if (!ctx.cfg.DEMO_MODE && process.env.NODE_ENV !== 'test') throw new Error('Refusing to seed demo data: DEMO_MODE is not enabled. Demo data must never be mixed with production data.');
@@ -215,8 +219,8 @@ export async function seedDemo(ctx: AppContext, opts: { log?: (m: string) => voi
     if (recs) log(`Added ${recs} sample session recordings`);
     return { projectId: existing.id, created: false };
   }
-  const demoUser = await ctx.db.one<{ id: string; email: string }>(`INSERT INTO users(email, name, password_hash, role) VALUES ('demo@phoenixxit.local', 'Demo Admin', $1, 'admin') ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name RETURNING id, email`, [hashPassword(generateApiKey())]);
-  const project = await createProject(ctx, { name: 'Phoenixx IT (DEMO – sample data)', siteUrl: SITE + '/', isDemo: true });
+  const demoUser = await ctx.db.one<{ id: string; email: string }>(`INSERT INTO users(id, email, name, password_hash, role) VALUES ($2::uuid, 'demo@phoenixxit.local', 'Demo Admin', $1, 'admin') ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name RETURNING id, email`, [hashPassword(generateApiKey()), DEMO_USER_ID]);
+  const project = await createProject(ctx, { id: DEMO_PROJECT_ID, name: 'Phoenixx IT (DEMO – sample data)', siteUrl: SITE + '/', isDemo: true });
   const pid = project.id;
   log(`Created demo project ${pid}`);
 

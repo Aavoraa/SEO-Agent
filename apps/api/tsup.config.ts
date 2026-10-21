@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup';
 
 // Bundles the API + CLI with the workspace packages inlined; third-party deps stay in node_modules.
 export default defineConfig({
-  entry: { index: 'src/index.ts', cli: 'src/cli/index.ts', migrate: 'src/cli/migrate.ts', 'seed-demo': 'src/cli/seed-demo.ts' },
+  entry: { index: 'src/index.ts', vercel: 'src/vercel.ts', cli: 'src/cli/index.ts', migrate: 'src/cli/migrate.ts', 'seed-demo': 'src/cli/seed-demo.ts' },
   format: ['esm'],
   platform: 'node',
   target: 'node20',

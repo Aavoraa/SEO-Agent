@@ -22,28 +22,38 @@ export interface MigrationResult {
   skipped: string[];
 }
 
-/** Applies *.sql files in lexical order, once each, inside a transaction. Detects edited migrations by checksum. */
+/** Arbitrary constant key for the Postgres advisory lock that serialises migrations. */
+const MIGRATION_LOCK_KEY = 727274712;
+
+/**
+ * Applies *.sql files in lexical order, once each, inside a transaction. Detects edited migrations by checksum.
+ * Safe under concurrency (several serverless instances cold-starting at once): every step takes a
+ * transaction-scoped advisory lock and re-checks schema_migrations inside it, so a second runner waits
+ * for the first and skips what it already applied.
+ */
 export async function migrate(db: Db, dir = defaultMigrationsDir()): Promise<MigrationResult> {
-  await db.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
-    version text PRIMARY KEY, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())`);
-  const done = new Map((await db.query<{ version: string; checksum: string }>('SELECT version, checksum FROM schema_migrations')).map((r) => [r.version, r.checksum]));
+  await db.transaction(async (tx) => {
+    await tx.query('SELECT pg_advisory_xact_lock($1)', [MIGRATION_LOCK_KEY]);
+    await tx.query(`CREATE TABLE IF NOT EXISTS schema_migrations (
+      version text PRIMARY KEY, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())`);
+  });
   const files = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
   const result: MigrationResult = { applied: [], skipped: [] };
   for (const file of files) {
     const sql = readFileSync(path.join(dir, file), 'utf8');
     const checksum = createHash('sha256').update(sql).digest('hex');
-    const prev = done.get(file);
-    if (prev) {
-      if (prev !== checksum) throw new Error(`Migration ${file} was modified after being applied. Create a new migration instead.`);
-      result.skipped.push(file);
-      continue;
-    }
-    await db.transaction(async (tx) => {
-      // Split is unnecessary: both drivers accept multi-statement text via exec-style simple query.
+    const applied = await db.transaction(async (tx) => {
+      await tx.query('SELECT pg_advisory_xact_lock($1)', [MIGRATION_LOCK_KEY]);
+      const prev = (await tx.query<{ checksum: string }>('SELECT checksum FROM schema_migrations WHERE version = $1', [file]))[0];
+      if (prev) {
+        if (prev.checksum !== checksum) throw new Error(`Migration ${file} was modified after being applied. Create a new migration instead.`);
+        return false;
+      }
       for (const stmt of splitSql(sql)) await tx.query(stmt);
       await tx.query('INSERT INTO schema_migrations(version, checksum) VALUES ($1, $2)', [file, checksum]);
+      return true;
     });
-    result.applied.push(file);
+    (applied ? result.applied : result.skipped).push(file);
   }
   return result;
 }

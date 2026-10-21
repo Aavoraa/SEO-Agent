@@ -2,7 +2,6 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
-import fastifyStatic from '@fastify/static';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { AppError, newId } from '@phoenixx/shared';
@@ -124,7 +123,9 @@ export async function buildServer(ctx: AppContext): Promise<FastifyInstance> {
 
   // Optional: serve the built dashboard from the API (single-container deployments).
   const dist = process.env.DASHBOARD_DIST ?? path.resolve(process.cwd(), 'apps/dashboard/dist');
-  if (existsSync(path.join(dist, 'index.html'))) {
+  if (!process.env.VERCEL && existsSync(path.join(dist, 'index.html'))) {
+    // Loaded lazily: only single-container deployments serve the dashboard from the API (never on Vercel).
+    const { default: fastifyStatic } = await import('@fastify/static');
     await app.register(fastifyStatic, { root: dist, prefix: '/', wildcard: false });
     app.setNotFoundHandler((req, reply) => (req.url.startsWith('/api/') ? reply.code(404).send({ error: { code: 'not_found', message: 'Route not found' } }) : reply.sendFile('index.html')));
   }

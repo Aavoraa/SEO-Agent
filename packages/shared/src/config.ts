@@ -92,7 +92,8 @@ export const envSchema = z.object({
 
   // Website deployment (approved changes → the live site). Takes precedence over WEBSITE_ADAPTER.
   // ftp/sftp/local = file-level deployment with backup, checksum, verification and automatic restore.
-  WEBSITE_DEPLOYMENT_PROVIDER: z.enum(['manual', 'git', 'wordpress', 'api', 'ftp', 'sftp', 'local']).optional(),
+  // Blank (as in .env.example) means "not set".
+  WEBSITE_DEPLOYMENT_PROVIDER: z.preprocess((v) => (v === '' ? undefined : v), z.enum(['manual', 'git', 'wordpress', 'api', 'ftp', 'sftp', 'local']).optional()),
   DEPLOY_REMOTE_ROOT: z.string().default('/public_html'),
   DEPLOY_ALLOWED_EXTENSIONS: z.string().default('.html,.htm'),
   /** Where deployed pages are fetched for verification (default: the project's site URL). */
